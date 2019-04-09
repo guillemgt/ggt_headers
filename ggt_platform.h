@@ -1,5 +1,5 @@
 //
-// GGT PLATFORM - v0
+// GGT PLATFORM - v1
 //
 // A cross-platform (though currently only for windows and wasm) platform layer
 // for games and the such. It can open a window with opengl
@@ -83,6 +83,11 @@ typedef union {
     ggt_vec2i coords;
     ggt_platform_mouse_movement mouse_movement;
 } ggt_platform_event_info;
+
+typedef char                        _ggt_platform_event_type_of_key;
+typedef ggt_vec2i                   _ggt_platform_event_type_of_size;
+typedef ggt_vec2i                   _ggt_platform_event_type_of_coords;
+typedef ggt_platform_mouse_movement _ggt_platform_event_type_of_mouse_movement;
 
 typedef struct {
     ggt_platform_event_type type;
@@ -311,8 +316,8 @@ struct {
 
 #define GGT_PLATFORM_ADD_EVENT(type_id, field, ...) if(ggt_globals.events.size < GGT_PLATFORM_MAX_EVENTS_PER_LOOP){ \
     ggt_globals.events.data[ggt_globals.events.size  ].type = type_id; \
-    ggt_platform_event_info info = { .field = __VA_ARGS__ }; \
-    ggt_globals.events.data[ggt_globals.events.size++].info = info; \
+    _ggt_platform_event_type_of_##field info = __VA_ARGS__ ; \
+    ggt_globals.events.data[ggt_globals.events.size++].info.field = info; \
 } \
 
 ggt_u8 _ggt_platform_get_key_code(ggt_u32 code) {

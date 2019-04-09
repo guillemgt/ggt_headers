@@ -1,5 +1,5 @@
 //
-// GGT PLATFORM
+// GGT PLATFORM - v0
 //
 // A cross-platform (though currently only for windows and wasm) platform layer
 // for games and the such. It can open a window with opengl
@@ -10,7 +10,8 @@
 //  - You should have functions named ggtp_init, ggtp_loop and ggtp_draw that
 //    will be called when the program is starting or every frame.
 //    ggtp_init must call ggtp_create_window.
-//  - To compile this, define GGT_PLATFORM_IMPLEMENTATION and include the header
+//  - To compile this, #define GGT_PLATFORM_IMPLEMENTATION and #include the
+//    header
 //
 // Options:
 //  - GGT_PLATFORM_PROGRAM_STATE {TYPE} if you want to have a variable of type
@@ -21,6 +22,12 @@
 #ifndef GGT_PLATFORM_H
 #define GGT_PLATFORM_H
 
+#define GGT_SUCCESS 1
+#define GGT_FAILURE 0
+
+#define GGT_C_SUCCESS 0
+#define GGT_C_FAILURE 1
+
 typedef unsigned           char ggt_u8;
 typedef unsigned           int  ggt_u32;
 typedef unsigned long long int  ggt_u64;
@@ -30,27 +37,27 @@ typedef unsigned long long int  ggt_u64;
 #endif
 
 typedef enum {
-    GGTPE_KEY_DOWN,
-    GGTPE_KEY_UP,
-    GGTPE_MOUSE_LEFT_DOWN,
-    GGTPE_MOUSE_LEFT_UP,
-    GGTPE_MOUSE_RIGHT_DOWN,
-    GGTPE_MOUSE_RIGHT_UP,
-    GGTPE_MOUSE_MOVE,
-    GGTPE_RESIZE,
-    GGTPE_CLOSE,
-    GGTPE_FOCUS_LOST,
+    GGTP_EVENT_KEY_DOWN,
+    GGTP_EVENT_KEY_UP,
+    GGTP_EVENT_MOUSE_LEFT_DOWN,
+    GGTP_EVENT_MOUSE_LEFT_UP,
+    GGTP_EVENT_MOUSE_RIGHT_DOWN,
+    GGTP_EVENT_MOUSE_RIGHT_UP,
+    GGTP_EVENT_MOUSE_MOVE,
+    GGTP_EVENT_RESIZE,
+    GGTP_EVENT_CLOSE,
+    GGTP_EVENT_FOCUS_LOST,
 } ggt_platform_event_type;
 
 
-const char GGTPK_SHIFT  = 0x03;
-const char GGTPK_RETURN = 0x0D;
-const char GGTPK_ESC    = 0x1B;
-const char GGTPK_SPACE  = 0x20;
-const char GGTPK_LEFT   = 0x25;
-const char GGTPK_UP     = 0x26;
-const char GGTPK_RIGHT  = 0x27;
-const char GGTPK_DOWN   = 0x28;
+const char GGTP_KEY_SHIFT  = 0x03;
+const char GGTP_KEY_RETURN = 0x0D;
+const char GGTP_KEY_ESC    = 0x1B;
+const char GGTP_KEY_SPACE  = 0x20;
+const char GGTP_KEY_LEFT   = 0x25;
+const char GGTP_KEY_UP     = 0x26;
+const char GGTP_KEY_RIGHT  = 0x27;
+const char GGTP_KEY_DOWN   = 0x28;
 
 #define GGTP_TOTAL_KEYS 128
 
@@ -60,7 +67,7 @@ typedef enum {
 	GGTP_CURSOR_WAIT,
 	GGTP_CURSOR_WRITE,
 } ggt_platform_cursor;
-void ggt_platform_set_cursor(ggt_platform_cursor cursor);
+void ggtp_set_cursor(ggt_platform_cursor cursor);
 
 typedef struct {
     int x, y;
@@ -107,16 +114,12 @@ ggt_u64 ggtp_file_modification_date(const char *filename);
 #if defined(_WIN32)
 #include <Windows.h>
 
-// For visual studio
-int __cdecl printf_windows(const char* format, ...);
-#define printf printf_windows
-
-
 //
 // GL preprocessor and function definitions
 // (From https://www.khronos.org/registry/OpenGL/api/GL/glext.h)
 //
 #include <gl/gl.h>
+#include <stddef.h>
 
 #ifndef __gl_glext_h_
 
@@ -186,10 +189,10 @@ GL_FUNCTION(void, glCompileShader, GLuint shader) \
 GL_FUNCTION(GLuint, glCreateProgram, void) \
 GL_FUNCTION(GLuint, glCreateShader, GLenum type) \
 GL_FUNCTION(void, glLinkProgram, GLuint program) \
-GL_FUNCTION(void, glShaderSource, GLuint shader, GLsizei count, GLchar** string, GLint* length) \
+GL_FUNCTION(void, glShaderSource, GLuint shader, GLsizei count, const GLchar **string, const GLint *length) \
 GL_FUNCTION(void, glUseProgram, GLuint program) \
 GL_FUNCTION(void, glGetProgramInfoLog, GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog) \
-GL_FUNCTION(void, glGetShaderInfoLog, GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* infoLog) \
+GL_FUNCTION(void, glGetShaderInfoLog, GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog) \
 GL_FUNCTION(void, glValidateProgram, GLuint program) \
 GL_FUNCTION(void, glGetShaderiv, GLuint shader, GLenum pname, GLint* params) \
 GL_FUNCTION(void, glGetProgramiv, GLuint program, GLenum pname, GLint* params) \
@@ -222,12 +225,12 @@ GL_FUNCTION(void, glDrawElementsBaseVertex, GLenum mode, GLsizei count, GLenum t
 GL_FUNCTION(const GLubyte* WINAPI, glGetStringi, GLenum name, GLuint index) \
 
 // Define gl function types
-#define GL_FUNCTION(TYPE, NAME, ...) typedef TYPE ggt_gl_type_##NAME(__VA_ARGS__);
+#define GL_FUNCTION(TYPE, NAME, ...) typedef TYPE WINAPI _ggtp_gl_type_##NAME(__VA_ARGS__);
 GGTP_GL_FUNCTION_LIST
 #undef GL_FUNCTION
 
 // Define the global variables for gl function pointers
-#define GL_FUNCTION(TYPE, NAME, ...) extern ggt_gl_type_##NAME *NAME;
+#define GL_FUNCTION(TYPE, NAME, ...) extern _ggtp_gl_type_##NAME *NAME;
 GGTP_GL_FUNCTION_LIST
 #undef GL_FUNCTION
 
@@ -250,16 +253,11 @@ GGTP_GL_FUNCTION_LIST
 
 #ifdef GGT_PLATFORM_IMPLEMENTATION
 
-#define ggt_globals ggt_platform_globals
-
-#define GGT_PLATFORM_ADD_EVENT(type_id, field, ...) if(ggt_globals.events.size < GGT_PLATFORM_MAX_EVENTS_PER_LOOP){ \
-        ggt_globals.events.data[ggt_globals.events.size  ].type = type_id; \
-        ggt_globals.events.data[ggt_globals.events.size++].info.field = __VA_ARGS__; \
-} \
-
 #if defined(_WIN32) // Windows implementation
 
+#pragma comment(lib, "user32.lib")
 #pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "gdi32.lib")
 
 #include <initguid.h>
 #include <KnownFolders.h>
@@ -270,13 +268,10 @@ GGTP_GL_FUNCTION_LIST
 
 #define GGT_PLATFORM_ALERT_ERROR(message, code) MessageBox(NULL, message "\n(ggt_platform error " code ")", "ERROR", MB_OK);
 
-
-
 //
 // WGL preprocessor and function definitions
 // (From https://www.khronos.org/registry/OpenGL/api/GL/wglext.h)
 //
-void ggtp_gl_init();
 
 #ifndef __wgl_wglext_h_
 
@@ -301,9 +296,11 @@ int WINAPI wglGetSwapIntervalEXT (void);
 //
 //
 //
+#define ggt_globals ggt_platform_globals
+
 struct {
     ggt_platform_events events;
-    ggt_u8 keys[128];
+    ggt_u8 keys[GGTP_TOTAL_KEYS];
     ggt_vec2i last_mouse_position;
     
     HWND hWnd;
@@ -312,27 +309,33 @@ struct {
     HINSTANCE hInstance;
 } ggt_globals;
 
+#define GGT_PLATFORM_ADD_EVENT(type_id, field, ...) if(ggt_globals.events.size < GGT_PLATFORM_MAX_EVENTS_PER_LOOP){ \
+    ggt_globals.events.data[ggt_globals.events.size  ].type = type_id; \
+    ggt_platform_event_info info = { .field = __VA_ARGS__ }; \
+    ggt_globals.events.data[ggt_globals.events.size++].info = info; \
+} \
+
 ggt_u8 _ggt_platform_get_key_code(ggt_u32 code) {
 	switch (code) {
         case VK_LEFT:
-		return GGTPK_LEFT;
+		return GGTP_KEY_LEFT;
 		break;
         case VK_UP:
-		return GGTPK_UP;
+		return GGTP_KEY_UP;
 		break;
         case VK_RIGHT:
-		return GGTPK_RIGHT;
+		return GGTP_KEY_RIGHT;
 		break;
         case VK_DOWN:
-		return GGTPK_DOWN;
+		return GGTP_KEY_DOWN;
         case VK_ESCAPE:
-		return GGTPK_ESC;
+		return GGTP_KEY_ESC;
         case VK_LSHIFT:
         case VK_RSHIFT:
         case VK_SHIFT:
-		return GGTPK_SHIFT;
+		return GGTP_KEY_SHIFT;
         case VK_SPACE:
-		return GGTPK_SPACE;
+		return GGTP_KEY_SPACE;
         default:
 		return (ggt_u8)code;
 	}
@@ -341,75 +344,65 @@ ggt_u8 _ggt_platform_get_key_code(ggt_u32 code) {
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam){
     switch(msg){
         case WM_CREATE:
-		break;
+        break;
         
         case WM_SIZE:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_RESIZE, size, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
-		break;
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_RESIZE, size, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+        break;
         
         case WM_SYSKEYDOWN:
         case WM_KEYDOWN: {
             ggt_u8 value = _ggt_platform_get_key_code((ggt_u32)wParam);
-            ggt_globals.keys[value] = 1;
-            GGT_PLATFORM_ADD_EVENT(GGTPE_KEY_DOWN, key, value);
+            if(value < GGTP_TOTAL_KEYS)
+                ggt_globals.keys[value] = 1;
+            GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_KEY_DOWN, key, value);
         } break;
         
         case WM_SYSKEYUP:
         case WM_KEYUP: {
             ggt_u8 value = _ggt_platform_get_key_code((ggt_u32)wParam);
-            ggt_globals.keys[value] = 0;
-            GGT_PLATFORM_ADD_EVENT(GGTPE_KEY_UP, key, value);
+            if(value < GGTP_TOTAL_KEYS)
+                ggt_globals.keys[value] = 0;
+            GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_KEY_UP, key, value);
         } break;
         
         case WM_LBUTTONDOWN:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_LEFT_DOWN, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
-		break;
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_LEFT_DOWN, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+        break;
         
         case WM_RBUTTONDOWN:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_RIGHT_DOWN, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_RIGHT_DOWN, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
         break;
         
         case WM_LBUTTONUP:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_LEFT_UP, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_LEFT_UP, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
         break;
         
         case WM_RBUTTONUP:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_RIGHT_UP, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_RIGHT_UP, coords, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
         break;
         
         case WM_MOUSEMOVE: {
             ggt_vec2i position = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-            GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_MOVE, mouse_movement, {position.x, position.y, position.x - ggt_globals.last_mouse_position.x, position.y - ggt_globals.last_mouse_position.y});
+            GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_MOVE, mouse_movement, {position.x, position.y, position.x - ggt_globals.last_mouse_position.x, position.y - ggt_globals.last_mouse_position.y});
             ggt_globals.last_mouse_position = position;
         } break;
         
         case WM_DESTROY:
         case WM_QUIT:
         case WM_CLOSE:
-        ggt_globals.events.data[ggt_globals.events.size++].type = GGTPE_CLOSE;
+        ggt_globals.events.data[ggt_globals.events.size++].type = GGTP_EVENT_CLOSE;
         PostQuitMessage(0);
         break;
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-// https://stackoverflow.com/questions/3009042/how-to-view-printf-output-in-a-win32-application-on-visual-studio-2010
-int __cdecl printf_windows(const char *format, ...)
-{
-    char str[1024];
-    
-    va_list argptr;
-    va_start(argptr, format);
-    int ret = vsnprintf(str, 1024, format, argptr);
-    va_end(argptr);
-    
-    OutputDebugString(str);
-    
-    return ret;
-}
-
 #define GGT_PLATFORM_WINDOW_CLASS_NAME "WINDOWCLASS"
 
+#define GL_FUNCTION(TYPE, NAME, ...) _ggtp_gl_type_##NAME *NAME;
+GGTP_GL_FUNCTION_LIST
+#undef GL_FUNCTION
 
 int ggtp_create_window(int width, int height, const char *window_name){
 	int screen_x = GetSystemMetrics(SM_CXSCREEN);
@@ -427,7 +420,7 @@ int ggtp_create_window(int width, int height, const char *window_name){
     
     if(!ggt_globals.hWnd){
 		GGT_PLATFORM_ALERT_ERROR("Cannot create window.", "1");
-        return 1;
+        return GGT_C_FAILURE;
     }
     
     ggt_globals.hDC = GetDC(ggt_globals.hWnd);
@@ -443,7 +436,7 @@ int ggtp_create_window(int width, int height, const char *window_name){
     int PixelFormat = ChoosePixelFormat(ggt_globals.hDC, &pfd);
     if (!SetPixelFormat(ggt_globals.hDC, PixelFormat, &pfd)) {
 		GGT_PLATFORM_ALERT_ERROR("Cannot set pixel format.", "2");
-        return 1;
+        return GGT_C_FAILURE;
     }
     
     int attriblist[] = {
@@ -470,20 +463,24 @@ int ggtp_create_window(int width, int height, const char *window_name){
     
 	if (!ggt_globals.hRC) {
 		GGT_PLATFORM_ALERT_ERROR("Could not create OpenGL context.", "3");
-		return 1;
+		return GGT_C_FAILURE;
 	}
     
     wglMakeCurrent(NULL, NULL);
     wglDeleteContext(hRCtmp);
     wglMakeCurrent(ggt_globals.hDC, ggt_globals.hRC);
     
-	ggtp_gl_init();
+#define GL_FUNCTION(TYPE, NAME, ...) NAME = (_ggtp_gl_type_##NAME *)wglGetProcAddress(#NAME);
+    GGTP_GL_FUNCTION_LIST
+#undef GL_FUNCTION
     
-    return 0;
+        return GGT_C_SUCCESS;
 }
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevious, LPSTR lpCmdLine, int nCmdShow){
+    ggt_globals.events.size = 0;
+    
     // We register the window class
     WNDCLASS wc;
     wc.cbClsExtra = 0;
@@ -498,7 +495,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevious, LPSTR lpCmdLine, in
     wc.hInstance = hInstance;
     if(!RegisterClass(&wc)){
 		GGT_PLATFORM_ALERT_ERROR("Cannot register window.", "0");
-        return 1;
+        return GGT_C_FAILURE;
     }
     
     ggt_globals.hInstance = hInstance;
@@ -515,7 +512,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevious, LPSTR lpCmdLine, in
 #define GGTP_DRAW() ggtp_draw()
 #endif
     
-    GGTP_INIT();
+    if(GGTP_INIT() == GGT_FAILURE)
+        return GGT_C_FAILURE;
+    
+    if(!ggt_globals.hWnd){
+        GGT_PLATFORM_ALERT_ERROR("Window was not created in ggtp_init().", "4");
+        return GGT_C_FAILURE;
+    }
     
     for(int i=0; i<GGTP_TOTAL_KEYS; i++) {
         ggt_globals.keys[i] = 0;
@@ -524,7 +527,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevious, LPSTR lpCmdLine, in
     
     MSG msg;
     while (1){
-        while (PeekMessage(&msg, NULL, NULL, NULL, PM_NOREMOVE)){
+        while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE)){
             if (!GetMessage(&msg, NULL, 0, 0)){
                 break;
             }
@@ -537,18 +540,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevious, LPSTR lpCmdLine, in
         for(ggt_u32 i=0; i<events.size; i++)
             events.data[i] = ggt_globals.events.data[i];
         ggt_globals.events.size = 0;
-        if(GGTP_LOOP(ggt_globals.keys, events) == 0)
-            return 0;
+        
+        if(GGTP_LOOP(ggt_globals.keys, events) == 0){
+            // Exit the program
+            wglMakeCurrent(NULL, NULL);
+            wglDeleteContext(ggt_globals.hRC);
+            ReleaseDC(ggt_globals.hWnd, ggt_globals.hDC);
+            return GGT_C_SUCCESS;
+        }
         
 		GGTP_DRAW();
         
         SwapBuffers(ggt_globals.hDC);
     }
     
-    return 0;
+    return GGT_C_SUCCESS;
 }
 
-void ggt_platform_set_cursor(ggt_platform_cursor cursor_id) {
+void ggtp_set_cursor(ggt_platform_cursor cursor_id) {
 	LPCTSTR win_cursor = IDC_ARROW;
 	switch (cursor_id) {
         case GGTP_CURSOR_ARROW:
@@ -568,12 +577,6 @@ void ggt_platform_set_cursor(ggt_platform_cursor cursor_id) {
 	SetCursor(cursor);
 }
 
-void quitWindows() {
-    wglMakeCurrent(NULL, NULL);
-    wglDeleteContext(ggt_globals.hRC);
-    ReleaseDC(ggt_globals.hWnd, ggt_globals.hDC);
-}
-
 void ggtp_program_file_path(const char *name, char *dst){
     sprintf(dst, "%s", name);
 }
@@ -589,22 +592,6 @@ ggt_u64 ggtp_file_modification_date(const char *path){
     if(_stat(path, &result) == 0)
         return result.st_mtime;
     return 0;
-}
-
-
-//
-// Loading OpenGL functions
-//
-
-#define GL_FUNCTION(TYPE, NAME, ...) ggt_gl_type_##NAME *NAME;
-GGTP_GL_FUNCTION_LIST
-#undef GL_FUNCTION
-
-void ggtp_gl_init() {
-#define GL_FUNCTION(TYPE, NAME, ...) NAME = (ggt_gl_type_##NAME *)wglGetProcAddress(#NAME);
-    GGTP_GL_FUNCTION_LIST
-#undef GL_FUNCTION
-    
 }
 
 #elif defined(__EMSCRIPTEN__)
@@ -632,13 +619,13 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 {
     char key = (char)e->keyCode;
     if(key == 16)
-        key = GGTPK_SHIFT;
+        key = GGTP_KEY_SHIFT;
     
     if(eventType == EMSCRIPTEN_EVENT_KEYUP){
-        GGT_PLATFORM_ADD_EVENT(GGTPE_KEY_UP, key, key);
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_KEY_UP, key, key);
         ggt_globals.keys[key] = 0;
     }else{
-        GGT_PLATFORM_ADD_EVENT(GGTPE_KEY_DOWN, key, key);
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_KEY_DOWN, key, key);
         ggt_globals.keys[key] = 1;
     }
     
@@ -649,13 +636,13 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
     ggt_vec2i position = {e->canvasX, e->canvasY};
     switch(eventType){
         case EMSCRIPTEN_EVENT_MOUSEDOWN:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_LEFT_DOWN, coords, position);
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_LEFT_DOWN, coords, position);
         break;
         case EMSCRIPTEN_EVENT_MOUSEUP:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_LEFT_UP, coords, position);
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_LEFT_UP, coords, position);
         break;
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
-        GGT_PLATFORM_ADD_EVENT(GGTPE_MOUSE_MOVE, mouse_movement, {position.x, position.y, position.x - ggt_globals.last_mouse_position.x, position.y - ggt_globals.last_mouse_position.y});
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_MOUSE_MOVE, mouse_movement, {position.x, position.y, position.x - ggt_globals.last_mouse_position.x, position.y - ggt_globals.last_mouse_position.y});
         break;
     }
     ggt_globals.last_mouse_position = {e->canvasX, e->canvasY};
@@ -666,7 +653,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
 
 EM_BOOL resize_callback(int eventType, const EmscriptenUiEvent *e, void *userData){
     if(eventType == EMSCRIPTEN_EVENT_RESIZE){
-        GGT_PLATFORM_ADD_EVENT(GGTPE_RESIZE, size, {e->windowInnerWidth, e->windowInnerHeight});
+        GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_RESIZE, size, {e->windowInnerWidth, e->windowInnerHeight});
         emscripten_set_canvas_element_size("canvas", e->windowInnerWidth, e->windowInnerHeight);
     }
     
@@ -712,7 +699,7 @@ int main(void) {
     
     init_game(&ggt_globals.game_state);
     
-    GGT_PLATFORM_ADD_EVENT(GGTPE_RESIZE, size, {width, height});
+    GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_RESIZE, size, {width, height});
     
     emscripten_set_main_loop(main_loop, 0, 1);
     

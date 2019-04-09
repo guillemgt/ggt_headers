@@ -1,3 +1,7 @@
+//
+// GGT MATH - v0
+//
+
 #ifndef GGT_MATH_H
 #define GGT_MATH_H
 

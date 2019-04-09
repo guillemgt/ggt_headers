@@ -1,5 +1,5 @@
 //
-// GGT GL UTILS
+// GGT GL UTILS - v0
 //
 // A header that provides some useful functions/macros for OpenGL, namely:
 //  - ggtgl_check_error()
@@ -10,7 +10,10 @@
 //    *fragment_shader_text)
 //
 // Usage:
-//  - To compile this, define GGT_GL_IMPLEMENTATION and include the header
+//  - To compile this, #define GGT_GL_IMPLEMENTATION and #include the header
+//
+// Options:
+//  - GGTGL_MAX_INFO_LOG_LENGTH for the maximum length of shader error info logs
 //
 
 
@@ -31,7 +34,7 @@ void ggtgl_load_texture(GLuint *texture, const char *path);
 #endif
 
 #ifdef __EMSCRIPTEN__
-#define OPENGL_ES 1
+#define GGTGL_OPENGL_ES 1
 #endif
 
 #endif
@@ -74,7 +77,7 @@ void _ggtgl_check_error(int line, const char *file){
             break;
 #endif
             default:
-            printf("Unknown [%i]", err);
+            printf("Unknown [0x%x]", err);
             break;
         }
         printf("\n");
@@ -86,38 +89,38 @@ void _ggtgl_set_buffer_data(GLuint buffer, void *vert, unsigned int size, GLuint
     glBufferData(GL_ARRAY_BUFFER, size, vert, mode);
 }
 
-#ifdef __EMSCRIPTEN__
-#define GL_STRING_CONST const
-#else
-#define GL_STRING_CONST
+#ifndef GGTGL_MAX_INFO_LOG_LENGTH
+#define GGTGL_MAX_INFO_LOG_LENGTH 400
 #endif
+
 GLuint ggtgl_load_shaders_by_text(const char *vertex_text, const char *fragment_text){
-    char error_message[400];
+    char error_message[GGTGL_MAX_INFO_LOG_LENGTH];
     
     // Create the shaders
     GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
     
-    
     GLint result = GL_FALSE;
-    int info_log_length;
+    GLsizei info_log_length = 0;
     
     // Compile Vertex Shader
-    glShaderSource(vertex_shader_id, 1, (GL_STRING_CONST GLchar **)&vertex_text , NULL);
+    glShaderSource(vertex_shader_id, 1, &vertex_text, NULL);
     glCompileShader(vertex_shader_id);
     
-    // Check Vertex Shader
+    // Check Fragment Shader
     glGetShaderiv(vertex_shader_id, GL_COMPILE_STATUS, &result);
     if(result == GL_FALSE){
         glGetShaderiv(vertex_shader_id, GL_INFO_LOG_LENGTH, &info_log_length);
         if(info_log_length > 0){
+            if(info_log_length > GGTGL_MAX_INFO_LOG_LENGTH)
+                info_log_length = GGTGL_MAX_INFO_LOG_LENGTH;
             glGetShaderInfoLog(vertex_shader_id, info_log_length, NULL, error_message);
             printf("Couldn't compile vertex shader:\n%s\n\n", error_message);
         }
     }
     
     // Compile Fragment Shader
-    glShaderSource(fragment_shader_id, 1, (GL_STRING_CONST GLchar **)&fragment_text , NULL);
+    glShaderSource(fragment_shader_id, 1, &fragment_text , NULL);
     glCompileShader(fragment_shader_id);
     
     // Check Fragment Shader
@@ -125,6 +128,8 @@ GLuint ggtgl_load_shaders_by_text(const char *vertex_text, const char *fragment_
     if(result == GL_FALSE){
         glGetShaderiv(fragment_shader_id, GL_INFO_LOG_LENGTH, &info_log_length);
         if(info_log_length > 0){
+            if(info_log_length > GGTGL_MAX_INFO_LOG_LENGTH)
+                info_log_length = GGTGL_MAX_INFO_LOG_LENGTH;
             glGetShaderInfoLog(fragment_shader_id, info_log_length, NULL, error_message);
             printf("Couldn't compile fragment shader:\n%s\n\n", error_message);
         }
@@ -141,6 +146,8 @@ GLuint ggtgl_load_shaders_by_text(const char *vertex_text, const char *fragment_
     if(result == GL_FALSE){
         glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_log_length);
         if(info_log_length > 0){
+            if(info_log_length > GGTGL_MAX_INFO_LOG_LENGTH)
+                info_log_length = GGTGL_MAX_INFO_LOG_LENGTH;
             glGetProgramInfoLog(program_id, info_log_length, NULL, error_message);
             printf("Couldn't link shader:\n%s\n\n", error_message);
             glValidateProgram(program_id);

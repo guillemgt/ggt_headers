@@ -16,8 +16,10 @@ GLuint gl_buffer_color;
 
 int ggtp_init(){
 	// Create window
-	if(ggtp_create_window(600, 600, "Triangle example"))
+	if(ggtp_create_window(600, 600, "Triangle example") == GGT_FAILURE){
+		printf("Example. Couln't create window. Quitting\n");
 		return GGT_FAILURE;
+	}
     
 	// Inititalize variables
 	triangle_angle = 0.f;

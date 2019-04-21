@@ -1,5 +1,5 @@
 //
-// GGT PLATFORM - v2
+// GGT PLATFORM - v3
 //
 // A cross-platform (though currently only for windows, linux and wasm -- using emscripten) platform layer
 // for games and the such. It can open a window with opengl
@@ -256,6 +256,8 @@ extern "C" {
 #include <GLES2/gl2.h>
 #include <GLES3/gl3.h>
     
+#define GGTP_OPENGL_ES 1
+    
 #elif defined(linux)
     
 #include <SDL2/SDL.h>
@@ -277,17 +279,6 @@ extern "C" {
 #endif
     
 #define ggt_globals ggt_platform_globals
-    
-#ifdef GGTP_PROGRAM_STATE
-#define GGTP_INIT() ggtp_init(&program_state)
-#define GGTP_LOOP(a, b) ggtp_loop(&program_state, a, b)
-#define GGTP_DRAW() ggtp_draw(&program_state)
-#else
-#define GGTP_INIT() ggtp_init()
-#define GGTP_LOOP(a, b) ggtp_loop(a, b)
-#define GGTP_DRAW() ggtp_draw()
-#endif
-    
     
 #define GGT_PLATFORM_ADD_EVENT(type_id, field, ...) do{ if(ggt_globals.events.size < GGTP_MAX_EVENTS_PER_LOOP){ \
             ggt_globals.events.data[ggt_globals.events.size  ].type = type_id; \
@@ -314,6 +305,16 @@ extern "C" {
 #include <WinUser.h>
     
 #define GGT_PLATFORM_ALERT_ERROR(message, code) MessageBox(NULL, message "\n(ggt_platform error " code ")", "ERROR", MB_OK);
+    
+#ifdef GGTP_PROGRAM_STATE
+#define GGTP_INIT() ggtp_init(&program_state)
+#define GGTP_LOOP(a, b) ggtp_loop(&program_state, a, b)
+#define GGTP_DRAW() ggtp_draw(&program_state)
+#else
+#define GGTP_INIT() ggtp_init()
+#define GGTP_LOOP(a, b) ggtp_loop(a, b)
+#define GGTP_DRAW() ggtp_draw()
+#endif
     
     //
     // WGL preprocessor and function definitions
@@ -632,8 +633,19 @@ extern "C" {
 #include <emscripten.h>
 #include <emscripten/html5.h>
     
+#ifdef GGTP_PROGRAM_STATE
+#define GGTP_INIT() ggtp_init(&ggt_globals.program_state)
+#define GGTP_LOOP(a, b) ggtp_loop(&ggt_globals.program_state, a, b)
+#define GGTP_DRAW() ggtp_draw(&ggt_globals.program_state)
+#else
+#define GGTP_INIT() ggtp_init()
+#define GGTP_LOOP(a, b) ggtp_loop(a, b)
+#define GGTP_DRAW() ggtp_draw()
+#endif
+    
+    
     struct {
-        GameState game_state;
+        GGTP_PROGRAM_STATE program_state;
         ggt_u8 keys[GGTP_TOTAL_KEYS];
         ggt_platform_events events;
         
@@ -693,13 +705,17 @@ extern "C" {
         return 0;
     }
     
-    void ggt_platform_set_cursor(ggt_platform_cursor cursor){
+    void ggtp_set_cursor(ggt_platform_cursor cursor){
     }
     
     void main_loop(){
-        game_loop(&ggt_globals.game_state, ggt_globals.keys, ggt_globals.events);
+        GGTP_LOOP(ggt_globals.keys, ggt_globals.events);
         ggt_globals.events.size = 0;
-        game_draw(&ggt_globals.game_state);
+        GGTP_DRAW();
+    }
+    
+    int ggtp_create_window(int width, int height, const char *window_name){
+        return GGT_SUCCESS;
     }
     
     int main(void) {
@@ -730,7 +746,7 @@ extern "C" {
             ggt_globals.keys[i] = 0;
         ggt_globals.events.size = 0;
         
-        init_game(&ggt_globals.game_state);
+        GGTP_INIT();
         
         GGT_PLATFORM_ADD_EVENT(GGTP_EVENT_RESIZE, size, {width, height});
         
@@ -756,6 +772,16 @@ extern "C" {
     //
     
 #include <SDL2/SDL.h>
+    
+#ifdef GGTP_PROGRAM_STATE
+#define GGTP_INIT() ggtp_init(&program_state)
+#define GGTP_LOOP(a, b) ggtp_loop(&program_state, a, b)
+#define GGTP_DRAW() ggtp_draw(&program_state)
+#else
+#define GGTP_INIT() ggtp_init()
+#define GGTP_LOOP(a, b) ggtp_loop(a, b)
+#define GGTP_DRAW() ggtp_draw()
+#endif
     
     struct {
         ggt_platform_events events;
